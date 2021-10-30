@@ -1,10 +1,12 @@
 from ast import literal_eval
+import os
 
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
 
+from solver import print_board
 from solver import solve
 from utils import GameDetails
 
@@ -20,6 +22,11 @@ identifier = {
     "td": (By.TAG_NAME, "td")
 
 }
+
+
+def print_debug(fn, *args):
+    if os.environ.get("VERBOSE", 0):
+        fn(*args)
 
 
 def get_color_val(color: tuple[int, int, int]) -> int:
@@ -71,7 +78,7 @@ def perform_clicks(driver: webdriver.Chrome, solved_board: list[list[int]],
 
     for pos, click_count in zip(cells_to_click, [cell for s_list in solved_board for cell in s_list]):
         cell = driver.find_element(By.ID, pos)
-        for i in range(click_count):
+        for _ in range(click_count):
             cell.click()
 
 
@@ -90,10 +97,21 @@ def start(shape: int) -> None:
         game.board_size = board_elem.size["width"]
         # save_element_as_png(driver, board)
 
+        print_debug(print, "scanning for the board")
+
         board = get_board_from_element(driver)
+
+        print_debug(print)
+        print_debug(print, "The board")
+        print_debug(print_board, board)
+        print_debug(print)
 
         # solve the board
         solve(board)
+
+        print_debug(print, "The solved board")
+        print_debug(print_board, board)
+        print_debug(print)
 
         print("Solving the web board")
         perform_clicks(driver, board, game.cells_to_click)
