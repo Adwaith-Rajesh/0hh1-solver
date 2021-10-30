@@ -1,14 +1,11 @@
 from ast import literal_eval
-from io import BytesIO
-from pprint import pprint
-from time import sleep
 
-from PIL import Image
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
 
+from solver import solve
 from utils import GameDetails
 
 
@@ -25,31 +22,6 @@ identifier = {
 }
 
 
-def get_element_as_png(driver: webdriver.Chrome, element) -> ...:
-
-    location = element.location
-    size = element.size
-
-    sleep(3)
-
-    image = driver.get_screenshot_as_png()
-
-    im = Image.open(BytesIO(image))
-
-    left = location['x']
-    top = location['y']
-    right = location['x'] + size['width']
-    bottom = location['y'] + size['height']
-
-    im = im.crop((left, top, right, bottom))  # defines crop points
-
-    pixels = list(im.getdata())
-    width, height = im.size
-    pixels = [pixels[i * width:(i + 1) * width] for i in range(height)]
-
-    return pixels
-
-
 def get_color_val(color: tuple[int, int, int]) -> int:
 
     TARGET_COLORS = {0: (42, 42, 42, 1), 1: (194, 75, 49, 1), 2: (48, 167, 194, 1)}
@@ -60,14 +32,15 @@ def get_color_val(color: tuple[int, int, int]) -> int:
     differences = [[color_difference(color, target_value), target_name]
                    for target_name, target_value in TARGET_COLORS.items()]
     differences.sort()  # sorted by the first element of inner lists
-    my_color_name = differences[0][1]
+    color_code = differences[0][1]
 
-    return my_color_name
+    return color_code
 
 
 def get_board_from_element(driver: webdriver.Chrome) -> list[list[int]]:
 
     demo_board = []
+    cells_to_click = []
 
     for i in range(game.shape):
         for j in range(game.shape):
@@ -75,13 +48,14 @@ def get_board_from_element(driver: webdriver.Chrome) -> list[list[int]]:
             # print(elem.value_of_css_property("background-color"))
 
             c_val = elem.find_element(By.CLASS_NAME, "inner").value_of_css_property("background-color")
-            print(c_val, f"{i=}, {j=}")
-            color_val = get_color_val(literal_eval(c_val[4:]))
-            print(color_val)
 
+            # get the color val, 0, 1, 2
+            color_val = get_color_val(literal_eval(c_val[4:]))
+
+            cells_to_click.append(f"tile-{j}-{i}")
             demo_board.append(color_val)
 
-    print(demo_board)
+    game.cells_to_click = cells_to_click
 
     return [demo_board[i:i + game.shape] for i in range(0, len(demo_board), game.shape)]
 
@@ -92,6 +66,15 @@ def get_element(driver: webdriver.Chrome, identifier: tuple[str, str], timeout: 
     )
 
 
+def perform_clicks(driver: webdriver.Chrome, solved_board: list[list[int]],
+                   cells_to_click: list[str]) -> None:
+
+    for pos, click_count in zip(cells_to_click, [cell for s_list in solved_board for cell in s_list]):
+        cell = driver.find_element(By.ID, pos)
+        for i in range(click_count):
+            cell.click()
+
+
 def start(shape: int) -> None:
 
     game.shape = shape
@@ -99,19 +82,29 @@ def start(shape: int) -> None:
     driver = webdriver.Chrome()
     driver.get(URL)
 
-    print("Move select the game shape and press enter.")
-    input()
+    while True:
+        print(f"Select a game with the shape {shape!r} and press enter.")
+        input()
 
-    print("Moved")
-    board_elem = get_element(driver, identifier["board"])
-    game.board_size = board_elem.size["width"]
-    # save_element_as_png(driver, board)
+        board_elem = get_element(driver, identifier["board"])
+        game.board_size = board_elem.size["width"]
+        # save_element_as_png(driver, board)
 
-    board = get_board_from_element(driver)
-    pprint(board, width=game.shape * 5)
+        board = get_board_from_element(driver)
 
-    input()
+        # solve the board
+        solve(board)
+
+        print("Solving the web board")
+        perform_clicks(driver, board, game.cells_to_click)
+
+        print("Solved")
+        print()
 
 
 def run(shape: int) -> None:
-    start(shape)
+    try:
+        start(shape)
+    except KeyboardInterrupt:
+        print("Bye ...")
+        quit()
