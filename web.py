@@ -90,7 +90,7 @@ def start(shape: int) -> None:
     driver.get(URL)
 
     while True:
-        print(f"Select a game with the shape {shape!r} and press enter.")
+        print(f"Select a game with the shape {game.shape!r} and press enter.")
         input()
 
         board_elem = get_element(driver, identifier["board"])
@@ -118,6 +118,16 @@ def start(shape: int) -> None:
 
         print("Solved")
         print()
+
+        while True:
+            print("Pick the puzzle shape for the next round.")
+            shape = int(input())
+            if shape in [4, 6, 8, 10, 12]:
+                game.shape = shape
+                break
+
+            else:
+                print("The shape must be any of 4, 6, 8, 10, 12")
 
 
 def run(shape: int) -> None:
