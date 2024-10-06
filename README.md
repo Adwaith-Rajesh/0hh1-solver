@@ -20,3 +20,5 @@ python3 main.py web 12
 python3 main.py web 8 -v
 
 ```
+---
+##### Watch the video [here](https://www.youtube.com/watch?v=B-AFMs9CyIY)
